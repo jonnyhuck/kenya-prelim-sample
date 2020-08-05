@@ -27,7 +27,7 @@ def distance(x1, y1, x2, y2):
 g = Geod(ellps='WGS84')
 
 # read in survey dataset
-mask_survey = read_csv("./data/mask-survey.csv")[["_Geo-Location_longitude", "_Geo-Location_latitude", "4.Sample ID", "Name of Informal Settlement"]].dropna()
+mask_survey = read_csv("./data/mask-survey.csv")[["Enumerator's Name", "_Geo-Location_longitude", "_Geo-Location_latitude", "4.Sample ID", "Name of Informal Settlement"]].dropna()
 
 # extract the sample ids using regex
 mask_survey['survey-id'] = mask_survey.apply(lambda x: int(split("/", x["4.Sample ID"].replace("\\", "/"))[0]), axis = 1)
@@ -70,7 +70,7 @@ for s in ['kibera', 'rodah', 'kisii']:
     samples = samples.merge(datasets[s]['data'], how='left', left_on='survey-id', right_on='id')
 
     # get distances from sample points to actual sample locations
-    samples['distance'] = samples[["longitude", "latitude", "_Geo-Location_longitude", "_Geo-Location_latitude"]].apply(lambda x: distance(x['longitude'], x['latitude'], x["_Geo-Location_longitude"], x["_Geo-Location_latitude"]), axis = 1)
+    samples['distance'] = samples[["Enumerator's Name", "longitude", "latitude", "_Geo-Location_longitude", "_Geo-Location_latitude"]].apply(lambda x: distance(x['longitude'], x['latitude'], x["_Geo-Location_longitude"], x["_Geo-Location_latitude"]), axis = 1)
 
     # get descriptive stats
     d_median = samples['distance'].median()
