@@ -97,7 +97,7 @@ for s in ['kibera', 'rodah', 'kisii']:
     # samples.to_csv(f"./out/{s}.csv", index=False, columns=['survey-id', "_Geo-Location_longitude", "_Geo-Location_latitude", 'distance'])
 
     # convert to geodataframe
-    gdf = GeoDataFrame(samples, geometry=points_from_xy(samples['_Geo-Location_longitude'], samples['_Geo-Location_longitude']), crs="EPSG:4326")
+    gdf = GeoDataFrame(samples, geometry=points_from_xy(samples['_Geo-Location_longitude'], samples['_Geo-Location_latitude']), crs="EPSG:4326")
 
     # write to file
     gdf.to_file(f"./out/shapefiles/{s}.shp")
