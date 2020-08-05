@@ -1,9 +1,16 @@
+"""
+* Analayse the distance between 'actual' sample locations and the 'target' locations
+*
+* @author: jonnyhuck
+"""
+
 from re import split
 from pyproj import Geod
 import matplotlib.pyplot as plt
 from numpy import median, percentile
 from pandas import read_csv, value_counts
-from scipy.stats import median_absolute_deviation as mad
+from geopandas import GeoDataFrame, points_from_xy
+
 
 def distance(x1, y1, x2, y2):
     """
@@ -63,28 +70,37 @@ for s in ['kibera', 'rodah', 'kisii']:
     samples = samples.merge(datasets[s]['data'], how='left', left_on='survey-id', right_on='id')
 
     # get distances from sample points to actual sample locations
-    distances = samples[["longitude", "latitude", "_Geo-Location_longitude", "_Geo-Location_latitude"]].apply(lambda x: distance(x['longitude'], x['latitude'], x["_Geo-Location_longitude"], x["_Geo-Location_latitude"]), axis = 1).to_numpy()
-    print(f"{s}: n:{len(distances)}, \tmedian:{median(distances):.2f}, \tmad:{mad(distances):.2f}, \tmin:{min(distances):.2f}, \tmax:{max(distances):.2f}")
+    samples['distance'] = samples[["longitude", "latitude", "_Geo-Location_longitude", "_Geo-Location_latitude"]].apply(lambda x: distance(x['longitude'], x['latitude'], x["_Geo-Location_longitude"], x["_Geo-Location_latitude"]), axis = 1)
+
+    # get descriptive stats
+    d_median = samples['distance'].median()
+    d_mad = samples['distance'].mad()
+    d_iq25 = percentile(samples['distance'], 25)
+    d_iq75 = percentile(samples['distance'], 75)
+    print(f"{s}: n:{len(samples['distance'].index)}, \tmedian:{d_median:.2f}, \tmad:{d_mad:.2f}, \tmin:{samples['distance'].min():.2f}, \tmax:{samples['distance'].max():.2f}")
 
     # plot histogram
     plt.subplot(plot_n)
-    plt.hist(distances, bins=range(0, 2700, 100), align='left', color="#5bc0de")
-    plt.axvline(median(distances), color='red', linestyle='dashed', linewidth=1.5)
-    plt.axvline(median(distances) + mad(distances), color='red', linewidth=0.5)
-    plt.axvline(median(distances) - mad(distances), color='red', linewidth=0.5)
-    # plt.axvline(percentile(distances, 25), color='blue', linewidth=0.5)
-    # plt.axvline(percentile(distances, 75), color='blue', linewidth=0.5)
+    plt.hist(samples['distance'], bins=range(0, 2700, 100), align='left', color="#5bc0de")
+    plt.axvline(d_median, color='red', linestyle='dashed', linewidth=1.5)
+    plt.axvline(d_iq25, color='red', linewidth=0.5)
+    plt.axvline(d_iq75, color='red', linewidth=0.5)
     plt.xlabel('Distance')
     plt.ylabel('Frequency')
     plt.ylim([0, 180])
-    plt.title(f'{s} (Median: {median(distances):.2f}, MAD: {mad(distances):.2f})')
+    plt.title(f'{s} (Median: {d_median:.2f}, IQR: {d_iq25:.2f}-{d_iq75:.2f})')
 
     # increment counter for which plot to draw to
     plot_n += 1
 
     # output a csv file for mapping
-    samples['distance'] = distances
-    samples.to_csv(f"./out/{s}.csv", index=False, columns=['survey-id', "_Geo-Location_longitude", "_Geo-Location_latitude", 'distance'])
+    # samples.to_csv(f"./out/{s}.csv", index=False, columns=['survey-id', "_Geo-Location_longitude", "_Geo-Location_latitude", 'distance'])
+
+    # convert to geodataframe
+    gdf = GeoDataFrame(samples, geometry=points_from_xy(samples['_Geo-Location_longitude'], samples['_Geo-Location_longitude']), crs="EPSG:4326")
+
+    # write to file
+    gdf.to_file(f"./out/shapefiles/{s}.shp")
 
 plt.savefig(f"./out/distances.png")
 print()
